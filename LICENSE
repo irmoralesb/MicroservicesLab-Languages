@@ -9,8 +9,18 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+2. This Software may integrate with or reference third-party services,
+   APIs, or platforms (including, but not limited to, the OpenAI API).
+   Use of such third-party services is subject to their respective terms,
+   policies, and agreements. This license does not grant any rights to
+   those third-party services.
+
+3. This Software is provided for educational, experimental, and learning
+   purposes. Nothing in this license implies endorsement, sponsorship, or
+   affiliation with any third-party service providers.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
