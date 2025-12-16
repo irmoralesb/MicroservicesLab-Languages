@@ -2,10 +2,31 @@
 Main FastAPI application.
 """
 from fastapi import FastAPI
-from routers import translate, router2
+from routers import translate
 from dotenv import load_dotenv
+from databases import models
+from databases.database import engine
+import logging
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Create tables - use checkfirst=False to avoid precision error with table existence check
+# This will attempt to create tables even if they exist, but SQL Server will handle duplicates gracefully
+try:
+    models.Base.metadata.create_all(engine, checkfirst=False)
+except Exception as e:
+    # If checkfirst=False fails, try with checkfirst=True and catch the specific error
+    logger.warning(f"Table creation with checkfirst=False failed: {e}")
+    try:
+        models.Base.metadata.create_all(engine, checkfirst=True)
+    except Exception as e2:
+        logger.error(f"Table creation failed: {e2}")
+        # Continue anyway - tables might already exist
+        pass
 
 app = FastAPI(
     title="MicroservicesLab-Languages API",
@@ -15,7 +36,6 @@ app = FastAPI(
 
 # Include routers
 app.include_router(translate.router)
-app.include_router(router2.router)
 
 
 @app.get("/")

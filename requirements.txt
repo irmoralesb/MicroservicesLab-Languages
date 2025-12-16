@@ -12,3 +12,4 @@ python-dotenv>=1.0.0
 
 # Database
 sqlalchemy>=2.0.45
+pyodbc>=5.3.0
