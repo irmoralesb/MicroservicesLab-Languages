@@ -15,3 +15,4 @@ async def router2_endpoint():
     Empty endpoint for router2 functionality.
     """
     return {"message": "Router2 endpoint"}
+
