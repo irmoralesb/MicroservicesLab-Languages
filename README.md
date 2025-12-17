@@ -40,3 +40,11 @@ docker container run -i -t --rm -p 8000:8000 <tag>:latest
 - `--rm`: Automatically remove the container when it exits
 - `-p 8000:8000`: Port mapping - maps port 8000 on the host to port 8000 in the container (format: `host_port:container_port`)
 - `<tag>:latest`: The image name and tag to run (replace `<tag>` with the same tag used when building the image)
+
+## Database
+
+**Connection string example**
+
+```
+mssql+pyodbc://<user>:<password>@localhost:1433/<db_name>?driver=SQL+Server&TrustServerCertificate=yes
+```
