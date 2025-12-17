@@ -1,10 +1,11 @@
 """
 Router in charge of translation between two languages
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.params import Depends
 from sqlalchemy.orm import Session
 from openai import OpenAI
+from starlette.status import HTTP_202_ACCEPTED
 from dependencies.openai import calculate_tokens_count, get_openai_client
 from . import translate_schemas as schema
 from databases.database import SessionLocal
@@ -22,6 +23,23 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@router.get("/{id}")
+async def get_translation(id: int, db: Session = Depends(get_db)):
+    token_data = db.query(TokenData).filter(TokenData.id == id).first()
+    if not token_data:
+        raise HTTPException(status_code=404, detail="Translation not found")
+
+    return token_data
+
+
+@router.delete("/{id}")
+async def delete_translation(id: int, db: Session = Depends(get_db)):
+    db.query(TokenData).filter(TokenData.id ==
+                               id).delete(synchronize_session=False)
+    db.commit()
+    return HTTP_202_ACCEPTED
 
 
 @router.post("/")
