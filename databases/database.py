@@ -30,8 +30,9 @@ engine = create_engine(
     pool_pre_ping=True,
     connect_args={
         "timeout": 30,
-        "use_setinputsizes": False  # Fixes pyodbc precision error with NVARCHAR(max)
-    }
+        "fast_executemany": False  # Disable fast_executemany to avoid precision errors
+    },
+    use_setinputsizes=False  # Fixes pyodbc precision error with NVARCHAR - must be at engine level, not in connect_args
 )
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
