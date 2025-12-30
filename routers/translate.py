@@ -13,7 +13,7 @@ from databases.models import TokenData
 from typing import List
 from llm_tools.llm_tools import llm_factory
 from llm_tools.llm_tools.llm_interface import LLMInterface
-
+import logging
 
 router = APIRouter(
     prefix="/api/v1/translate",
@@ -65,8 +65,13 @@ async def translate_endpoint(requestBody: schema.TranslateRequest, llm_tool: LLM
     # input_tokens = calculate_tokens_count(
     #     requestBody.text_to_translate, "gpt-4o-mini")
 
-    translated_text = llm_tool.translate_text(requestBody.text_to_translate,"spanish")
-    return {"message": f"{translated_text}"}
+    translation_response = llm_tool.translate_text(requestBody.text_to_translate,"spanish")
+    if translation_response.is_success:
+        return {"message": f"{translation_response.data.translated_text}"}
+    
+    # Return an HttpException
+    error_message = translation_response.error.message
+    return {"error": f"{error_message}"}
 
     # output = request.choices[0].message.content
     # output_tokens = calculate_tokens_count(output, "gpt-4o-mini")

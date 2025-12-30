@@ -7,11 +7,13 @@ from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
 import logging
+import logging
 
 load_dotenv()
 
+
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Create tables - use checkfirst=False to avoid precision error with table existence check
