@@ -2,7 +2,7 @@
 Main FastAPI application.
 """
 from fastapi import FastAPI
-from routers import translate
+from routers import translator
 from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
@@ -37,7 +37,7 @@ app = FastAPI(
 )
 
 # Include routers
-app.include_router(translate.router)
+app.include_router(translator.router)
 
 
 @app.get("/")
