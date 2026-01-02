@@ -10,9 +10,9 @@ from databases.database import SessionLocal
 from databases.models import UsageDataModel, TranslationRequestModel
 
 # from typing import List
-from llm_tools.llm_tools import llm_factory
-from llm_tools.llm_tools.llm_interface import LLMInterface
-from llm_tools.llm_tools.openai_tools.responses import TranslatorResponse
+from llm_tools import llm_factory
+from llm_tools.llm_interface import LLMInterface
+from llm_tools.openai_tools.responses import TranslatorResponse
 # import logging
 import uuid
 
