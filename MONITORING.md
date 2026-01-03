@@ -157,19 +157,31 @@ database_connections_active > 8  Adjust threshold
 - Consider sampling for high-volume metrics
 
 ### 3. Security
+
 - Protect `/metrics` endpoint in production:
-  ```python
-  from fastapi import Depends, HTTPException, status
-  from fastapi.security import HTTPBasic, HTTPBasicCredentials
-  
-  security = HTTPBasic()
-  
-  @app.get("/metrics")
-  async def metrics(credentials: HTTPBasicCredentials = Depends(security)):
-      if credentials.username != "metrics_user":
-          raise HTTPException(status_code=401)
-      Return metrics
-  ```
+```python
+import os
+import secrets
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+security = HTTPBasic()
+
+METRICS_USERNAME = os.getenv("METRICS_USERNAME", "metrics_user")
+METRICS_PASSWORD = os.getenv("METRICS_PASSWORD")
+
+@app.get("/metrics")
+async def metrics(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, METRICS_USERNAME)
+    correct_password = METRICS_PASSWORD is not None and secrets.compare_digest(
+        credentials.password, METRICS_PASSWORD
+    )
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+        )
+```
 
 ### 4. Alert Configuration
 
