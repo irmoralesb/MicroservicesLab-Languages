@@ -6,8 +6,10 @@ from routers import translator
 from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
+from prometheus_fastapi_instrumentator import Instrumentator
+from monitoring import metrics  # Import centralized metrics module
 import logging
-import logging
+import os
 
 load_dotenv()
 
@@ -36,6 +38,38 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Prometheus metrics configuration
+METRICS_ENABLED = os.getenv("METRICS_ENABLED", "true").lower() == "true"
+METRICS_ENDPOINT = os.getenv("METRICS_ENDPOINT", "/metrics")
+
+# Initialize Prometheus instrumentation with configuration
+# This automatically tracks HTTP requests, response times, and status codes
+if METRICS_ENABLED:
+    try:
+        instrumentator = Instrumentator(
+            should_group_status_codes=True,  # Group 2xx, 3xx, 4xx, 5xx
+            should_ignore_untemplated=True,  # Ignore requests without a route
+            should_respect_env_var=True,
+            should_instrument_requests_inprogress=True,
+            # Don't track admin/metrics endpoints
+            excluded_handlers=[".*admin.*", "/metrics"],
+            env_var_name="ENABLE_METRICS",
+            inprogress_name="http_requests_inprogress",
+            inprogress_labels=True,
+        )
+
+        # Add custom instrumentation for request/response sizes
+        instrumentator.add(
+            lambda info: info.request.headers.get("content-length", 0)
+        )
+
+        instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)
+        logger.info(f"Prometheus metrics enabled at {METRICS_ENDPOINT}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Prometheus metrics: {e}")
+else:
+    logger.info("Prometheus metrics disabled")
+
 # Include routers
 app.include_router(translator.router)
 
@@ -53,4 +87,16 @@ async def health_check():
     """
     Health check endpoint.
     """
-    return {"status": "healthy"}
+    health_data = {"status": "healthy"}
+    if METRICS_ENABLED:
+        health_data["metrics_enabled"] = True
+        health_data["metrics_endpoint"] = METRICS_ENDPOINT
+    return health_data
+
+# Temporally here, it must be moved it its own routers
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
+
+@app.get("/metrics")
+async def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
