@@ -14,6 +14,27 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
+## Prometheus Metrics (internal setup)
+
+1. Install monitoring dependencies:
+	```
+	pip install prometheus-client prometheus-fastapi-instrumentator
+	```
+	(they are expected to be present in `requirements.txt` for full installs).
+2. Enable metrics via environment variables (e.g. in a `.env` file):
+	```
+	METRICS_ENABLED=true
+	METRICS_ENDPOINT=/metrics
+	```
+3. Ensure the app imports metrics instrumentation in `main.py` and exposes the endpoint. The existing setup uses `prometheus_fastapi_instrumentator.Instrumentator` to auto-collect HTTP metrics and then calls `instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)`.
+4. Use the centralized metric definitions in `monitoring/metrics.py` for custom counters/histograms (e.g., `record_translation_metrics`, `record_llm_metrics`, `record_database_metrics`). Import and call these helpers from routers or services when recording domain-specific metrics.
+5. Start the service normally and hit the metrics endpoint to verify collection:
+	```
+	uvicorn main:app --reload
+	# then browse http://localhost:8000/metrics (or your custom METRICS_ENDPOINT)
+	```
+	Make sure your Prometheus server scrapes this same metrics endpoint (default `/metrics` on the app host/port) in its scrape config.
+
 ## Docker
 
 ### Build the image
