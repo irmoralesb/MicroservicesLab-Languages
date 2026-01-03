@@ -2,12 +2,13 @@
 Main FastAPI application.
 """
 from fastapi import FastAPI
-from routers import translator
+from routers import translator, health, prometheus_metrics
 from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
+from prometheus_fastapi_instrumentator import Instrumentator
 import logging
-import logging
+import os
 
 load_dotenv()
 
@@ -36,9 +37,42 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Prometheus metrics configuration
+METRICS_ENABLED = os.getenv("METRICS_ENABLED", "true").lower() == "true"
+METRICS_ENDPOINT = os.getenv("METRICS_ENDPOINT", "/metrics")
+
+# Initialize Prometheus instrumentation with configuration
+# This automatically tracks HTTP requests, response times, and status codes
+if METRICS_ENABLED:
+    try:
+        instrumentator = Instrumentator(
+            should_group_status_codes=True,  # Group 2xx, 3xx, 4xx, 5xx
+            should_ignore_untemplated=True,  # Ignore requests without a route
+            should_respect_env_var=True,
+            should_instrument_requests_inprogress=True,
+            # Don't track admin/metrics endpoints
+            excluded_handlers=[".*admin.*", "/metrics"],
+            env_var_name="METRICS_ENABLED",
+            inprogress_name="http_requests_inprogress",
+            inprogress_labels=True,
+        )
+
+        # Add custom instrumentation for request/response sizes
+        instrumentator.add(
+            lambda info: info.request.headers.get("content-length", 0)
+        )
+
+        instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)
+        logger.info(f"Prometheus metrics enabled at {METRICS_ENDPOINT}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Prometheus metrics: {e}")
+else:
+    logger.info("Prometheus metrics disabled")
+
 # Include routers
 app.include_router(translator.router)
-
+app.include_router(health.router)
+app.include_router(prometheus_metrics.router)
 
 @app.get("/")
 async def root():
@@ -46,11 +80,3 @@ async def root():
     Root endpoint.
     """
     return {"message": "Welcome to MicroservicesLab-Languages API"}
-
-
-@app.get("/health")
-async def health_check():
-    """
-    Health check endpoint.
-    """
-    return {"status": "healthy"}

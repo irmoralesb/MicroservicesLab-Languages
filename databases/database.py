@@ -4,6 +4,11 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+# from sqlalchemy import event
+# from sqlalchemy.pool import Pool
+import logging
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -35,5 +40,47 @@ engine = create_engine(
     use_setinputsizes=False  # Fixes pyodbc precision error with NVARCHAR - must be at engine level, not in connect_args
 )
 
+# Optional: Monitor connection pool events for advanced metrics
+# @event.listens_for(Pool, "connect")
+# def receive_connect(dbapi_conn, connection_record):
+#     """Track when connections are created in the pool."""
+#     logger.debug("New database connection created")
+#     from monitoring.metrics import database_connections_active
+#     database_connections_active.inc()
+# 
+# @event.listens_for(Pool, "close")
+# def receive_close(dbapi_conn, connection_record):
+#     """Track when connections are closed."""
+#     logger.debug("Database connection closed")
+#     from monitoring.metrics import database_connections_active
+#     database_connections_active.dec()
+
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
+
+# Database connection monitoring with context manager
+from contextlib import contextmanager
+from monitoring.metrics import database_connections_activating, database_connections_deactivating
+
+@contextmanager
+def get_monitored_db_session():
+    """
+    Context manager for database sessions with connection monitoring.
+    Usage in routers:
+    
+    def get_db():
+        with get_monitored_db_session() as db:
+            yield db
+    """
+    database_connections_activating()
+    session = SessionLocal()
+    try:
+        yield session
+        if session.new or session.dirty or session.deleted:
+            session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+        database_connections_deactivating()
