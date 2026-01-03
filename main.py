@@ -2,12 +2,11 @@
 Main FastAPI application.
 """
 from fastapi import FastAPI
-from routers import translator, health, metrics
+from routers import translator, health, prometheus_metrics
 from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
 from prometheus_fastapi_instrumentator import Instrumentator
-from monitoring import metrics  # Import centralized metrics module
 import logging
 import os
 
@@ -73,6 +72,7 @@ else:
 # Include routers
 app.include_router(translator.router)
 app.include_router(health.router)
+app.include_router(prometheus_metrics.router)
 
 @app.get("/")
 async def root():
