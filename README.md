@@ -41,6 +41,177 @@ uvicorn main:app --reload
 	```
 	Make sure your Prometheus server scrapes this same metrics endpoint (default `/api/v1/metrics` on the app host/port) in its scrape config.
 
+### Example To See Metrics in Grafana
+
+Import the following json in Grafana Dashboard to see the metrics
+
+```json
+{
+  "dashboard": {
+    "title": "Translation API Monitoring",
+    "tags": ["microservices", "translation", "api"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Translation Requests per Second",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(translation_requests_total[5m])",
+            "legendFormat": "{{status}} - {{target_language}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Success Rate",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(translation_requests_total{status=\"success\"}[5m])) / sum(rate(translation_requests_total[5m])) * 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 99, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "P95 Translation Latency",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(translation_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{target_language}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Latency"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Token Consumption Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(llm_tokens_used_total[5m])",
+            "legendFormat": "{{model_name}} - {{token_type}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Active Database Connections",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "database_connections_active"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 8, "color": "yellow"},
+                {"value": 15, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(application_errors_total[5m])",
+            "legendFormat": "{{error_type}} - {{endpoint}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "HTTP Request Duration (P50, P95, P99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Total Requests by Status Code",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "sum by (status_code) (http_requests_total)",
+            "legendFormat": "{{status_code}}"
+          }
+        ]
+      }
+    ],
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}
+```
+
+### Grafana datasource configuration for auto-provisioning Prometheus
+This file automatically configures Prometheus as a datasource when Grafana starts
+
+```
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: POST
+```
+
+
 ## Docker
 
 ### Build the image

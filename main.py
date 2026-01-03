@@ -52,7 +52,7 @@ if METRICS_ENABLED:
             should_instrument_requests_inprogress=True,
             # Don't track admin/metrics endpoints
             excluded_handlers=[".*admin.*", "/metrics"],
-            env_var_name="ENABLE_METRICS",
+            env_var_name="METRICS_ENABLED",
             inprogress_name="http_requests_inprogress",
             inprogress_labels=True,
         )

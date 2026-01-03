@@ -1,7 +1,7 @@
-# """
-# Centralized Prometheus metrics definitions.
-# Define all metrics here to avoid duplication across modules.
-# """
+"""
+Centralized Prometheus metrics definitions.
+Define all metrics here to avoid duplication across modules.
+"""
 from prometheus_client import Counter, Histogram, Gauge, Info
 import logging
 

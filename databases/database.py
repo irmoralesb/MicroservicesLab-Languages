@@ -76,7 +76,8 @@ def get_monitored_db_session():
     session = SessionLocal()
     try:
         yield session
-        session.commit()
+        if session.new or session.dirty or session.deleted:
+            session.commit()
     except Exception:
         session.rollback()
         raise
