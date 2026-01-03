@@ -2,7 +2,7 @@
 Main FastAPI application.
 """
 from fastapi import FastAPI
-from routers import translator
+from routers import translator, health, metrics
 from dotenv import load_dotenv
 from databases import models
 from databases.database import engine
@@ -72,7 +72,7 @@ else:
 
 # Include routers
 app.include_router(translator.router)
-
+app.include_router(health.router)
 
 @app.get("/")
 async def root():
@@ -80,23 +80,3 @@ async def root():
     Root endpoint.
     """
     return {"message": "Welcome to MicroservicesLab-Languages API"}
-
-
-@app.get("/health")
-async def health_check():
-    """
-    Health check endpoint.
-    """
-    health_data = {"status": "healthy"}
-    if METRICS_ENABLED:
-        health_data["metrics_enabled"] = True
-        health_data["metrics_endpoint"] = METRICS_ENDPOINT
-    return health_data
-
-# Temporally here, it must be moved it its own routers
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-from fastapi.responses import Response
-
-@app.get("/metrics")
-async def metrics():
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

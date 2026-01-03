@@ -24,16 +24,22 @@ uvicorn main:app --reload
 2. Enable metrics via environment variables (e.g. in a `.env` file):
 	```
 	METRICS_ENABLED=true
-	METRICS_ENDPOINT=/metrics
+	METRICS_ENDPOINT=/api/v1/metrics
 	```
 3. Ensure the app imports metrics instrumentation in `main.py` and exposes the endpoint. The existing setup uses `prometheus_fastapi_instrumentator.Instrumentator` to auto-collect HTTP metrics and then calls `instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)`.
-4. Use the centralized metric definitions in `monitoring/metrics.py` for custom counters/histograms (e.g., `record_translation_metrics`, `record_llm_metrics`, `record_database_metrics`). Import and call these helpers from routers or services when recording domain-specific metrics.
+4. Use the centralized metric definitions in `monitoring/metrics.py` for custom counters/histograms. Available helpers:
+	- `record_translation_metrics`
+	- `record_llm_metrics`
+	- `record_database_metrics`
+	- `database_connections_activating`
+	- `database_connections_deactivating`
+	Import and call these helpers from routers or services when recording domain-specific metrics.
 5. Start the service normally and hit the metrics endpoint to verify collection:
 	```
 	uvicorn main:app --reload
-	# then browse http://localhost:8000/metrics (or your custom METRICS_ENDPOINT)
+	# then browse http://localhost:8000/api/v1/metrics (or your custom METRICS_ENDPOINT)
 	```
-	Make sure your Prometheus server scrapes this same metrics endpoint (default `/metrics` on the app host/port) in its scrape config.
+	Make sure your Prometheus server scrapes this same metrics endpoint (default `/api/v1/metrics` on the app host/port) in its scrape config.
 
 ## Docker
 
@@ -43,11 +49,6 @@ uvicorn main:app --reload
 docker image build -t <tag> .
 ```
 
-**Parameters:**
-- `docker image build`: Docker command to build an image from a Dockerfile
-- `-t <tag>`: Tag the image with a name (replace `<tag>` with your desired image name, e.g., `microserviceslab-languages`)
-- `.`: The build context (current directory containing the Dockerfile)
-
 ### Run the container
 
 ```
@@ -55,6 +56,9 @@ docker container run -i -t --rm -p 8000:8000 <tag>:latest
 ```
 
 **Parameters:**
+- `docker image build`: Docker command to build an image from a Dockerfile
+- `-t <tag>`: Tag the image with a name (replace `<tag>` with your desired image name, e.g., `microserviceslab-languages`)
+- `.`: The build context (current directory containing the Dockerfile)
 - `docker container run`: Docker command to run a container from an image
 - `-i`: Interactive mode - keeps STDIN open even if not attached
 - `-t`: Allocate a pseudo-TTY - provides an interactive terminal
@@ -69,3 +73,19 @@ docker container run -i -t --rm -p 8000:8000 <tag>:latest
 ```
 mssql+pyodbc://<user>:<password>@localhost:1433/<db_name>?driver=SQL+Server&TrustServerCertificate=yes
 ```
+
+## API Endpoints
+
+- `GET /` — Root welcome message
+- `GET /api/v1/health` — Health check endpoint
+- `GET /api/v1/metrics` — Prometheus metrics endpoint
+- Other endpoints under `/api/v1/translator` (see source for details)
+
+## Environment Variables
+
+- `METRICS_ENABLED` — Enable Prometheus metrics (`true` or `false`)
+- `METRICS_ENDPOINT` — Path for metrics endpoint (default: `/api/v1/metrics`)
+
+## Contributing & Testing
+
+Contributions are welcome! Please ensure new endpoints follow the `/api/v1/...` pattern and use centralized metrics helpers from `monitoring/metrics.py`.
