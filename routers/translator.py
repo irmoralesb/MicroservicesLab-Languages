@@ -39,7 +39,9 @@ def get_db():
 
 
 def get_llm_interface() -> LLMInterface:
-    return llm_factory.LLMFactory().create_llm('openai', "gpt-4o-mini")
+    #TODO: update this to make it dinamically
+    return llm_factory.LLMFactory().create_llm('anthropic', "claude-3-5-haiku-20241022")
+    #return llm_factory.LLMFactory().create_llm('openai', "gpt-4o-mini")
 
 
 @router.post("/translate", status_code=status.HTTP_201_CREATED)
@@ -80,7 +82,6 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
             status_code=500, detail="Translation service unavailable")
 
     # Inserting data into db
-
     usage_data = UsageDataModel()
     usage_data.transaction_id = str(transaction_id)
     usage_data.model_name = ""
