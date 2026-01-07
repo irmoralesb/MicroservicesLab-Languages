@@ -12,7 +12,10 @@ from databases.database import get_monitored_db_session
 from monitoring.metrics import record_database_metrics
 from llm_tools import llm_factory
 from llm_tools.llm_interface import LLMInterface
-from llm_tools.openai_tools.responses import TranslatorResponse
+from llm_tools.openai_tools.responses import OpenAITranslatorResponse
+from llm_tools.anthropic_tools.responses import AnthropicTranslatorResponse
+from llm_tools.api_responses import APIResponse
+from typing import Annotated
 import logging
 import uuid
 import time
@@ -35,12 +38,14 @@ def get_db():
         yield db
 
 
-def get_llm_interface():
+def get_llm_interface() -> LLMInterface:
     return llm_factory.LLMFactory().create_llm('openai', "gpt-4o-mini")
 
 
 @router.post("/translate", status_code=status.HTTP_201_CREATED)
-async def translate_endpoint(requestBody: schema.TranslateEndpointRequest, llm_tool: LLMInterface = Depends(get_llm_interface), db: Session = Depends(get_db)):
+async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
+                            llm_tool: Annotated[LLMInterface, Depends(get_llm_interface)],
+                            db: Annotated[Session, Depends(get_db)]):
     # Start timing for performance monitoring
     start_time = time.time()
     llm_start_time = None
@@ -50,7 +55,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest, llm_t
     try:
         # Time the LLM API call separately
         llm_start_time = time.time()
-        translation_response: TranslatorResponse = llm_tool.translate_text(
+        translation_response: APIResponse = llm_tool.translate_text(
             requestBody.text_to_translate, requestBody.translate_to_language)
         llm_duration = time.time() - llm_start_time
 
@@ -77,7 +82,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest, llm_t
     # Inserting data into db
 
     usage_data = UsageDataModel()
-    usage_data.transaction_id = transaction_id
+    usage_data.transaction_id = str(transaction_id)
     usage_data.model_name = ""
     usage_data.model_company = ""
     usage_data.input_calculated_token_count = 0
@@ -87,6 +92,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest, llm_t
         translation_response.usage.output_tokens
     usage_data.usage_date = None
 
+    db_start = time.time()
     try:
         db_start = time.time()
         db.add(usage_data)
