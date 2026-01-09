@@ -57,11 +57,6 @@ if METRICS_ENABLED:
             inprogress_labels=True,
         )
 
-        # Add custom instrumentation for request/response sizes
-        instrumentator.add(
-            lambda info: info.request.headers.get("content-length", 0)
-        )
-
         instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)
         logger.info(f"Prometheus metrics enabled at {METRICS_ENDPOINT}")
     except Exception as e:
