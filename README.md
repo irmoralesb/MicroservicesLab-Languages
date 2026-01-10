@@ -47,11 +47,17 @@ Import the following json in Grafana Dashboard to see the metrics
 
 ```json
 {
-  "dashboard": {
-    "title": "Translation API Monitoring",
-    "tags": ["microservices", "translation", "api"],
-    "timezone": "browser",
-    "panels": [
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
       {
         "id": 1,
         "title": "Translation Requests per Second",
@@ -184,11 +190,21 @@ Import the following json in Grafana Dashboard to see the metrics
       }
     ],
     "refresh": "10s",
+    "schemaVersion": 27,
+    "style": "dark",
+    "tags": ["microservices", "translation", "api"],
+    "templating": {
+      "list": []
+    },
     "time": {
       "from": "now-1h",
       "to": "now"
-    }
-  }
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Translation API Monitoring",
+    "uid": null,
+    "version": 0
 }
 ```
 
