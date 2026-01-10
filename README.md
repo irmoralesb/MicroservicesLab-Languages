@@ -24,7 +24,7 @@ uvicorn main:app --reload
 2. Enable metrics via environment variables (e.g. in a `.env` file):
 	```
 	METRICS_ENABLED=true
-	METRICS_ENDPOINT=/api/v1/metrics
+	METRICS_ENDPOINT=/metrics
 	```
 3. Ensure the app imports metrics instrumentation in `main.py` and exposes the endpoint. The existing setup uses `prometheus_fastapi_instrumentator.Instrumentator` to auto-collect HTTP metrics and then calls `instrumentator.instrument(app).expose(app, endpoint=METRICS_ENDPOINT)`.
 4. Use the centralized metric definitions in `monitoring/metrics.py` for custom counters/histograms. Available helpers:
@@ -37,9 +37,9 @@ uvicorn main:app --reload
 5. Start the service normally and hit the metrics endpoint to verify collection:
 	```
 	uvicorn main:app --reload
-	# then browse http://localhost:8000/api/v1/metrics (or your custom METRICS_ENDPOINT)
+	# then browse http://localhost:8000/metrics (or your custom METRICS_ENDPOINT)
 	```
-	Make sure your Prometheus server scrapes this same metrics endpoint (default `/api/v1/metrics` on the app host/port) in its scrape config.
+	Make sure your Prometheus server scrapes this same metrics endpoint (default `/metrics` on the app host/port) in its scrape config.
 
 ### Example To See Metrics in Grafana
 
@@ -249,14 +249,140 @@ mssql+pyodbc://<user>:<password>@localhost:1433/<db_name>?driver=SQL+Server&Trus
 
 - `GET /` — Root welcome message
 - `GET /api/v1/health` — Health check endpoint
-- `GET /api/v1/metrics` — Prometheus metrics endpoint
-- Other endpoints under `/api/v1/translator` (see source for details)
+- `GET /api/v1/metrics` — Prometheus metrics endpoint (requires router, default endpoint is `/metrics`)
+- `POST /api/v1/translator/translate` — Translation endpoint (translates text between languages)
 
 ## Environment Variables
 
-- `METRICS_ENABLED` — Enable Prometheus metrics (`true` or `false`)
-- `METRICS_ENDPOINT` — Path for metrics endpoint (default: `/api/v1/metrics`)
+- `METRICS_ENABLED` — Enable Prometheus metrics (`true` or `false`, default: `true`)
+- `METRICS_ENDPOINT` — Path for metrics endpoint (default: `/metrics`)
 
-## Contributing & Testing
+## About This Project
 
-Contributions are welcome! Please ensure new endpoints follow the `/api/v1/...` pattern and use centralized metrics helpers from `monitoring/metrics.py`.
+This is a personal learning lab project created for educational purposes. While I'm not accepting pull requests or contributions at this time, you are absolutely welcome to:
+
+- **View** the code and explore the implementation
+- **Comment** with suggestions, questions, or feedback
+- **Fork** the repository for your own learning and experimentation
+
+Feel free to use this project as a reference or starting point for your own microservices journey. If you have questions or ideas, I'd be happy to discuss them in the issues section!
+
+---
+
+## Appendix: Installing Microsoft ODBC Driver 18 for SQL Server on Kubuntu 25.10
+
+This guide provides step-by-step instructions for installing the Microsoft ODBC Driver 18 for SQL Server on Kubuntu 25.10.
+
+## Prerequisites
+
+- Kubuntu 25.10 (officially supported)
+- Terminal access with sudo privileges
+- Internet connection
+
+## Installation Steps
+
+### 1. Download and Install Microsoft Repository Configuration
+
+Download the package to configure the Microsoft repository:
+
+```bash
+curl -sSL -O https://packages.microsoft.com/config/ubuntu/25.10/packages-microsoft-prod.deb
+```
+
+Install the repository configuration package:
+
+```bash
+sudo dpkg -i packages-microsoft-prod.deb
+```
+
+Clean up the downloaded file:
+
+```bash
+rm packages-microsoft-prod.deb
+```
+
+### 2. Update Package Lists
+
+Update your system's package lists:
+
+```bash
+sudo apt-get update
+```
+
+### 3. Install MSSQL ODBC Driver 18
+
+Install the ODBC driver (accepting the EULA automatically):
+
+```bash
+sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+```
+
+### 4. Optional: Install SQL Server Command-Line Tools
+
+If you need `bcp` and `sqlcmd` utilities:
+
+```bash
+sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18
+```
+
+Add the tools to your PATH:
+
+```bash
+echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 5. Optional: Install unixODBC Development Headers
+
+For development purposes:
+
+```bash
+sudo apt-get install -y unixodbc-dev
+```
+
+## Verification
+
+To verify the installation was successful, check the installed ODBC drivers:
+
+```bash
+odbcinst -q -d
+```
+
+You should see "ODBC Driver 18 for SQL Server" in the output.
+
+## Troubleshooting
+
+### Error: Malformed line in source list
+
+If you encounter an error like:
+```
+E: Malformed line 1 in source list /etc/apt/sources.list.d/mssql-release.list (type)
+```
+
+Remove the malformed file and reinstall the repository configuration:
+
+```bash
+sudo rm /etc/apt/sources.list.d/mssql-release.list
+curl -sSL -O https://packages.microsoft.com/config/ubuntu/25.10/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm packages-microsoft-prod.deb
+sudo apt-get update
+```
+
+### Alternative EULA Acceptance Method
+
+Instead of using the `ACCEPT_EULA=Y` environment variable, you can set the debconf variable:
+
+```bash
+echo msodbcsql18 msodbcsql/ACCEPT_EULA boolean true | sudo debconf-set-selections
+sudo apt-get install -y msodbcsql18
+```
+
+## Additional Resources
+
+- [Official Microsoft Documentation](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server)
+- [ODBC Driver Release Notes](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/release-notes-odbc-sql-server-linux-mac)
+
+## License
+
+The Microsoft ODBC Driver for SQL Server is subject to Microsoft's End-User License Agreement (EULA). By installing this software, you accept the terms of the EULA.
