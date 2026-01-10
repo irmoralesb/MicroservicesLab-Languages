@@ -1,31 +1,29 @@
 """
 Router in charge of translation between two languages
 """
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.params import Depends
-from sqlalchemy.orm import Session
-from starlette.status import HTTP_202_ACCEPTED
-from . import translator_schemas as schema
-from databases.database import SessionLocal
-from databases.models import UsageDataModel, TranslationRequestModel
-from databases.database import get_monitored_db_session
-from monitoring.metrics import record_database_metrics
-from llm_tools import llm_factory
-from llm_tools.llm_interface import LLMInterface
-from llm_tools.openai_tools.responses import OpenAITranslatorResponse
-from llm_tools.anthropic_tools.responses import AnthropicTranslatorResponse
-from llm_tools.api_responses import APIResponse
-from typing import Annotated
 import logging
-import uuid
 import time
+import uuid
+from typing import Annotated
 
-# Import centralized metrics functions
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from databases.database import get_monitored_db_session
+from databases.models import UsageDataModel, TranslationRequestModel
+from llm_tools import llm_factory
+from llm_tools.api_responses import APIResponse
+from llm_tools.llm_interface import LLMInterface
+from llm_tools.anthropic_tools.responses import AnthropicTranslatorResponse
+from llm_tools.openai_tools.responses import OpenAITranslatorResponse
 from monitoring.metrics import (
-    record_translation_metrics,
+    application_errors_total,
+    record_database_metrics,
     record_llm_metrics,
-    application_errors_total
+    record_translation_metrics,
 )
+
+from . import translator_schemas as schema
 
 router = APIRouter(
     prefix="/api/v1/translator",
@@ -44,7 +42,7 @@ def get_llm_interface() -> LLMInterface:
     #return llm_factory.LLMFactory().create_llm('openai', "gpt-4o-mini")
 
 
-@router.post("/translate", status_code=status.HTTP_201_CREATED)
+@router.post("/translate", status_code=status.HTTP_200_OK)
 async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
                             llm_tool: Annotated[LLMInterface, Depends(get_llm_interface)],
                             db: Annotated[Session, Depends(get_db)]):
@@ -106,29 +104,12 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
             duration=db_duration,
             status='success'
         )
-
-        # Record LLM metrics using centralized function
-        record_llm_metrics(
-            model_name='gpt-4o-mini',
-            input_tokens=translation_response.usage.input_tokens,
-            output_tokens=translation_response.usage.output_tokens,
-            duration=llm_duration,
-            status='success'
-        )
     except Exception as e:
         db_duration = time.time() - db_start if 'db_start' in locals() else 0
         record_database_metrics(
             operation_type='insert',
             table='usage_data',
             duration=db_duration,
-            status='error'
-        )
-        # Record LLM metrics using centralized function
-        record_llm_metrics(
-            model_name='gpt-4o-mini',
-            input_tokens=translation_response.usage.input_tokens,
-            output_tokens=translation_response.usage.output_tokens,
-            duration=llm_duration,
             status='error'
         )
         application_errors_total.labels(
@@ -138,7 +119,11 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
         raise HTTPException(
             status_code=500, detail="Failed to save usage data")
 
-    # Record LLM metrics using centralized function
+    # Calculate total duration
+    total_duration = time.time() - start_time
+    text_length = len(requestBody.text_to_translate)
+
+    # Record LLM metrics using centralized function (single point)
     record_llm_metrics(
         model_name='gpt-4o-mini',
         input_tokens=translation_response.usage.input_tokens,
@@ -146,10 +131,6 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
         duration=llm_duration,
         status='success' if translation_response.is_success else 'error'
     )
-
-    # Calculate total duration
-    total_duration = time.time() - start_time
-    text_length = len(requestBody.text_to_translate)
 
     if translation_response.is_success:
         # Record successful translation metrics using centralized function

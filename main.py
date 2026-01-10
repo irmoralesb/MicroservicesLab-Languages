@@ -1,20 +1,27 @@
 """
 Main FastAPI application.
 """
-from fastapi import FastAPI
-from routers import translator, health, prometheus_metrics
-from dotenv import load_dotenv
-from databases import models
-from databases.database import engine
-from prometheus_fastapi_instrumentator import Instrumentator
 import logging
 import os
+
+from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+
+from databases import models
+from databases.database import engine
+from routers import health, prometheus_metrics, translator
 
 load_dotenv()
 
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging from environment (default INFO)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 # Create tables - use checkfirst=False to avoid precision error with table existence check
@@ -35,6 +42,17 @@ app = FastAPI(
     title="MicroservicesLab-Languages API",
     description="Services to Enable Learning Language",
     version="1.0.0"
+)
+
+# CORS configuration
+cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Prometheus metrics configuration
