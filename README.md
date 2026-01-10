@@ -236,6 +236,8 @@ datasources:
 docker image build -t <tag> .
 ```
 
+The Docker image installs `unixodbc`/`unixodbc-dev` so `pyodbc` can connect, and runs as an unprivileged user. If you need the Microsoft SQL Server ODBC driver inside the image, add the Microsoft repository and install `msodbcsql18` during the build (see Appendix for host instructions).
+
 ### Run the container
 
 ```
