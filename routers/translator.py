@@ -5,6 +5,7 @@ import logging
 import time
 import uuid
 from typing import Annotated
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -36,21 +37,27 @@ def get_db():
         yield db
 
 
-def get_llm_interface() -> LLMInterface:
-    #TODO: update this to make it dinamically
-    return llm_factory.LLMFactory().create_llm('anthropic', "claude-3-5-haiku-20241022")
-    #return llm_factory.LLMFactory().create_llm('openai', "gpt-4o-mini")
+def get_llm_factory() -> llm_factory.LLMFactory:
+    """Dependency that provides an LLM factory instance."""
+    return llm_factory.LLMFactory()
+    
 
 
 @router.post("/translate", status_code=status.HTTP_200_OK)
 async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
-                            llm_tool: Annotated[LLMInterface, Depends(get_llm_interface)],
+                            llm_factory: Annotated[llm_factory.LLMFactory, Depends(get_llm_factory)],
                             db: Annotated[Session, Depends(get_db)]):
     # Start timing for performance monitoring
     start_time = time.time()
     llm_start_time = None
 
     transaction_id = uuid.uuid4()
+
+    # Create LLM interface dynamically from request parameters
+    llm_tool: LLMInterface = llm_factory.create_llm(
+        requestBody.llm_provider, 
+        requestBody.llm_model
+    )
 
     try:
         # Time the LLM API call separately
@@ -82,14 +89,14 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
     # Inserting data into db
     usage_data = UsageDataModel()
     usage_data.transaction_id = str(transaction_id)
-    usage_data.model_name = ""
-    usage_data.model_company = ""
+    usage_data.model_name = requestBody.llm_model
+    usage_data.model_company = requestBody.llm_provider
     usage_data.input_calculated_token_count = 0
     usage_data.input_token_count = translation_response.usage.input_tokens
     usage_data.output_token_count = translation_response.usage.output_tokens
     usage_data.total_token_count = translation_response.usage.input_tokens + \
         translation_response.usage.output_tokens
-    usage_data.usage_date = None
+    usage_data.usage_date = datetime.now(timezone.utc)
 
     db_start = time.time()
     try:

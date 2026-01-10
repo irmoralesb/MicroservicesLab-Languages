@@ -10,7 +10,7 @@ class UsageDataModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     transaction_id: Mapped[str] = mapped_column(String(36), default=lambda: str(uuid.uuid4()))
     model_company: Mapped[str] = mapped_column(String(20))
-    model_name: Mapped[str] = mapped_column(String(20))
+    model_name: Mapped[str] = mapped_column(String(40))
     input_calculated_token_count: Mapped[int | None] = mapped_column(nullable=True) # TODO: Remove Nullable
     input_token_count: Mapped[int] = mapped_column()
     output_token_count: Mapped[int] = mapped_column()
