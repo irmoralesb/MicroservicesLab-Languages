@@ -272,6 +272,8 @@ mssql+pyodbc://<user>:<password>@localhost:1433/<db_name>?driver=SQL+Server&Trus
 
 - `METRICS_ENABLED` — Enable Prometheus metrics (`true` or `false`, default: `true`)
 - `METRICS_ENDPOINT` — Path for metrics endpoint (default: `/metrics`)
+- `LOG_LEVEL` — Logging level (e.g., `INFO`, `DEBUG`; default: `INFO`)
+- `CORS_ALLOW_ORIGINS` — Comma-separated list of allowed origins for CORS (default: `*`)
 
 ## About This Project
 
