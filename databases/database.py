@@ -4,8 +4,6 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-# from sqlalchemy import event
-# from sqlalchemy.pool import Pool
 import logging
 
 logger = logging.getLogger(__name__)

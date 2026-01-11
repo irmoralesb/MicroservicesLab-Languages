@@ -40,13 +40,12 @@ def get_db():
 def get_llm_factory() -> llm_factory.LLMFactory:
     """Dependency that provides an LLM factory instance."""
     return llm_factory.LLMFactory()
-    
 
 
 @router.post("/translate", status_code=status.HTTP_200_OK)
-async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
-                            llm_factory: Annotated[llm_factory.LLMFactory, Depends(get_llm_factory)],
-                            db: Annotated[Session, Depends(get_db)]):
+async def translate_endpoint(request_body: schema.TranslateEndpointRequest,
+                             llm_factory: Annotated[llm_factory.LLMFactory, Depends(get_llm_factory)],
+                             db: Annotated[Session, Depends(get_db)]):
     # Start timing for performance monitoring
     start_time = time.time()
     llm_start_time = None
@@ -55,15 +54,15 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
 
     # Create LLM interface dynamically from request parameters
     llm_tool: LLMInterface = llm_factory.create_llm(
-        requestBody.llm_provider, 
-        requestBody.llm_model
+        request_body.llm_provider,
+        request_body.llm_model
     )
 
     try:
         # Time the LLM API call separately
         llm_start_time = time.time()
         translation_response: APIResponse = llm_tool.translate_text(
-            requestBody.text_to_translate, requestBody.translate_to_language)
+            request_body.text_to_translate, request_body.translate_to_language)
         llm_duration = time.time() - llm_start_time
 
         logger = logging.getLogger(__name__)
@@ -89,8 +88,8 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
     # Inserting data into db
     usage_data = UsageDataModel()
     usage_data.transaction_id = str(transaction_id)
-    usage_data.model_name = requestBody.llm_model
-    usage_data.model_company = requestBody.llm_provider
+    usage_data.model_name = request_body.llm_model
+    usage_data.model_company = request_body.llm_provider
     usage_data.input_calculated_token_count = 0
     usage_data.input_token_count = translation_response.usage.input_tokens
     usage_data.output_token_count = translation_response.usage.output_tokens
@@ -98,10 +97,29 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
         translation_response.usage.output_tokens
     usage_data.usage_date = datetime.now(timezone.utc)
 
+    translation_request_data: TranslationRequestModel
+
+    if translation_response.is_success:
+        translation_request_data = TranslationRequestModel.from_success(
+            transaction_id=str(transaction_id),
+            text_to_translate=request_body.text_to_translate,
+            original_text_language=translation_response.data.text_language,
+            translated_text=translation_response.data.translated_text,
+            translated_to_language=request_body.translate_to_language
+        )
+    else:
+        translation_request_data = TranslationRequestModel.from_error(
+            transaction_id=str(transaction_id),
+            text_to_translate=request_body.text_to_translate,
+            translated_to_language=request_body.translate_to_language,
+            error_message=translation_response.error.message
+        )
+
     db_start = time.time()
     try:
         db_start = time.time()
         db.add(usage_data)
+        db.add(translation_request_data)
         db_duration = time.time() - db_start
 
         # Record database operation metrics
@@ -111,6 +129,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
             duration=db_duration,
             status='success'
         )
+
     except Exception as e:
         db_duration = time.time() - db_start if 'db_start' in locals() else 0
         record_database_metrics(
@@ -128,7 +147,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
 
     # Calculate total duration
     total_duration = time.time() - start_time
-    text_length = len(requestBody.text_to_translate)
+    text_length = len(request_body.text_to_translate)
 
     # Record LLM metrics using centralized function (single point)
     record_llm_metrics(
@@ -142,7 +161,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
     if translation_response.is_success:
         # Record successful translation metrics using centralized function
         record_translation_metrics(
-            target_language=requestBody.translate_to_language,
+            target_language=request_body.translate_to_language,
             duration=total_duration,
             status='success',
             text_length=text_length,
@@ -153,7 +172,7 @@ async def translate_endpoint(requestBody: schema.TranslateEndpointRequest,
 
     # Record failed translation metrics
     record_translation_metrics(
-        target_language=requestBody.translate_to_language,
+        target_language=request_body.translate_to_language,
         duration=total_duration,
         status='error',
         text_length=text_length,
