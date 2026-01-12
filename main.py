@@ -24,20 +24,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create tables - use checkfirst=False to avoid precision error with table existence check
-# This will attempt to create tables even if they exist, but SQL Server will handle duplicates gracefully
-try:
-    models.Base.metadata.create_all(engine, checkfirst=False)
-except Exception as e:
-    # If checkfirst=False fails, try with checkfirst=True and catch the specific error
-    logger.warning(f"Table creation with checkfirst=False failed: {e}")
-    try:
-        models.Base.metadata.create_all(engine, checkfirst=True)
-    except Exception as e2:
-        logger.error(f"Table creation failed: {e2}")
-        # Continue anyway - tables might already exist
-        pass
-
 app = FastAPI(
     title="MicroservicesLab-Languages API",
     description="Services to Enable Learning Language",
@@ -46,7 +32,8 @@ app = FastAPI(
 
 # CORS configuration
 cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
-origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+origins = [origin.strip()
+           for origin in cors_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -86,6 +73,7 @@ else:
 app.include_router(translator.router)
 app.include_router(health.router)
 app.include_router(prometheus_metrics.router)
+
 
 @app.get("/")
 async def root():

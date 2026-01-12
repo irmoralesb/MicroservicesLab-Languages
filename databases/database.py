@@ -1,3 +1,5 @@
+from monitoring.metrics import database_connections_activating, database_connections_deactivating
+from contextlib import contextmanager
 import os
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -12,7 +14,14 @@ load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL")
 if not SQLALCHEMY_DATABASE_URL:
-    raise RuntimeError("SQLALCHEMY_DATABASE_URL environment variable is required")
+    raise RuntimeError(
+        "SQLALCHEMY_DATABASE_URL environment variable is required")
+
+SQLALCHEMY_DATABASE_MIGRATION_URL = os.getenv(
+    "SQLALCHEMY_DATABASE_MIGRATION_URL")
+if not SQLALCHEMY_DATABASE_MIGRATION_URL:
+    raise RuntimeError(
+        "SQLALCHEMY_DATABASE_MIGRATION_URL environment variable is required")
 
 # Add LongAsMax=Yes to connection string to fix NVARCHAR(max) precision error
 # This works with ODBC Driver 18+ for SQL Server
@@ -35,7 +44,8 @@ engine = create_engine(
         "timeout": 30,
         "fast_executemany": False  # Disable fast_executemany to avoid precision errors
     },
-    use_setinputsizes=False  # Fixes pyodbc precision error with NVARCHAR - must be at engine level, not in connect_args
+    # Fixes pyodbc precision error with NVARCHAR - must be at engine level, not in connect_args
+    use_setinputsizes=False
 )
 
 # Optional: Monitor connection pool events for advanced metrics
@@ -45,7 +55,7 @@ engine = create_engine(
 #     logger.debug("New database connection created")
 #     from monitoring.metrics import database_connections_active
 #     database_connections_active.inc()
-# 
+#
 # @event.listens_for(Pool, "close")
 # def receive_close(dbapi_conn, connection_record):
 #     """Track when connections are closed."""
@@ -57,15 +67,14 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
 # Database connection monitoring with context manager
-from contextlib import contextmanager
-from monitoring.metrics import database_connections_activating, database_connections_deactivating
+
 
 @contextmanager
 def get_monitored_db_session():
     """
     Context manager for database sessions with connection monitoring.
     Usage in routers:
-    
+
     def get_db():
         with get_monitored_db_session() as db:
             yield db

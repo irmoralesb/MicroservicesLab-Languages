@@ -72,7 +72,7 @@ async def translate_endpoint(request_body: schema.TranslateEndpointRequest,
         if llm_start_time:
             llm_duration = time.time() - llm_start_time
             record_llm_metrics(
-                model_name='gpt-4o-mini',
+                model_name=request_body.llm_model,
                 input_tokens=0,
                 output_tokens=0,
                 duration=llm_duration,
@@ -151,7 +151,7 @@ async def translate_endpoint(request_body: schema.TranslateEndpointRequest,
 
     # Record LLM metrics using centralized function (single point)
     record_llm_metrics(
-        model_name='gpt-4o-mini',
+        model_name=request_body.llm_model,
         input_tokens=translation_response.usage.input_tokens,
         output_tokens=translation_response.usage.output_tokens,
         duration=llm_duration,

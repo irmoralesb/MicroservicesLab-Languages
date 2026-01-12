@@ -263,6 +263,8 @@ docker container run -i -t --rm -p 8000:8000 <tag>:latest
 mssql+pyodbc://<user>:<password>@localhost:1433/<db_name>?driver=SQL+Server&TrustServerCertificate=yes
 ```
 
+For Database Migrations read: `alembic/README.md` file.
+
 ## API Endpoints
 
 - `GET /` — Root welcome message

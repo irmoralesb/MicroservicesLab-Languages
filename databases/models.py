@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, DateTime
+from sqlalchemy import String, Boolean, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base
 import uuid
@@ -14,12 +14,12 @@ class UsageDataModel(Base):
     model_company: Mapped[str] = mapped_column(String(20))
     model_name: Mapped[str] = mapped_column(String(40))
     input_calculated_token_count: Mapped[int | None] = mapped_column(
-        nullable=True)  # TODO: Remove Nullable
+        nullable=True)
     input_token_count: Mapped[int] = mapped_column()
     output_token_count: Mapped[int] = mapped_column()
     total_token_count: Mapped[int] = mapped_column()
     usage_date: Mapped[datetime.datetime | None] = mapped_column(
-        DateTime, nullable=True)  # TODO: Remove Nullable
+        DateTime, server_default=func.getutcdate(), nullable=False)
 
 
 class TranslationRequestModel(Base):
@@ -33,7 +33,11 @@ class TranslationRequestModel(Base):
     translated_text: Mapped[str] = mapped_column(String(4000))
     target_text_language: Mapped[str] = mapped_column(String(10))
     is_success_request: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    error_message: Mapped[str] = mapped_column(String(4000), nullable=True)
+    error_message: Mapped[str] = mapped_column(
+        # TODO: Replace with an error detail table
+        String(4000), nullable=True)
+    translation_date: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime, server_default=func.getutcdate(), nullable=False)
 
     @classmethod
     def from_success(cls, transaction_id: str, text_to_translate: str, original_text_language: str, translated_text: str, translated_to_language: str):
